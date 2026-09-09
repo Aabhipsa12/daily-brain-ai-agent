@@ -7,7 +7,7 @@ from google import genai
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# --- This is our "tool" — a real action the AI can take ---
+# --- Tool 1: Save a task ---
 def save_task(task: str, priority: str) -> str:
     """Saves a task to a local file called tasks.json, with a priority level.
 
@@ -15,7 +15,6 @@ def save_task(task: str, priority: str) -> str:
         task: A short description of the task to save.
         priority: How urgent the task is — 'high', 'medium', or 'low'.
     """
-    # Load existing tasks if the file already exists
     if os.path.exists("tasks.json"):
         with open("tasks.json", "r") as f:
             tasks = json.load(f)
@@ -33,15 +32,30 @@ def save_task(task: str, priority: str) -> str:
 
     return f"Saved task: '{task}' with priority '{priority}'."
 
-# --- Set up a chat session that knows about this tool ---
+# --- Tool 2: Read back saved tasks ---
+def list_tasks() -> str:
+    """Returns all previously saved tasks, so the assistant can review or summarize them."""
+    if not os.path.exists("tasks.json"):
+        return "No tasks have been saved yet."
+
+    with open("tasks.json", "r") as f:
+        tasks = json.load(f)
+
+    if not tasks:
+        return "No tasks have been saved yet."
+
+    return json.dumps(tasks, indent=2)
+
+# --- Chat session with both tools available ---
 chat = client.chats.create(
     model="gemini-3.6-flash",
     config={
-        "tools": [save_task],
+        "tools": [save_task, list_tasks],
         "system_instruction": (
             "You are a productivity assistant. When the user tells you about tasks, "
             "organize them into a clear plan. If a task seems worth remembering long-term, "
-            "call save_task to actually save it, don't just describe it."
+            "call save_task to actually save it. If the user asks what's on their list, "
+            "their tasks, or similar, call list_tasks and summarize the result clearly."
         )
     }
 )
