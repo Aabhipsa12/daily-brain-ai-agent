@@ -2,6 +2,43 @@
   {
     "task": "Submit DSA assignment by Friday",
     "priority": "high",
-    "saved_at": "2026-09-09 18:47"
+    "saved_at": "2026-09-09 18:47",
+    "status": "pending",
+    "due_date": "Not specified"
+  },
+  {
+    "task": "Prepare for DAA exam (Exam date: Wednesday, September 16, 2026)",
+    "priority": "high",
+    "saved_at": "2026-09-09 20:28",
+    "status": "pending",
+    "due_date": "Not specified"
+  },
+  {
+    "task": "Finish DAA assignment",
+    "priority": "high",
+    "saved_at": "2026-09-12 11:20",
+    "status": "completed",
+    "due_date": "Not specified"
+  },
+  {
+    "task": "Create an app",
+    "priority": "high",
+    "saved_at": "2026-09-12 11:21",
+    "status": "completed",
+    "due_date": "Not specified"
+  },
+  {
+    "task": "Work on Google Form",
+    "priority": "medium",
+    "saved_at": "2026-09-12 11:21",
+    "status": "completed",
+    "due_date": "Not specified"
+  },
+  {
+    "task": "Write DAA notes",
+    "priority": "high",
+    "saved_at": "2026-09-12 11:21",
+    "status": "pending",
+    "due_date": "Not specified"
   }
 ]
