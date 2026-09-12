@@ -26,6 +26,8 @@ def get_saved_tasks() -> list:
             item["status"] = "pending"
         if "due_date" not in item:
             item["due_date"] = "Not specified"
+        if "category" not in item or not item.get("category"):
+            item["category"] = "General"
         
         # Subtasks normalization
         raw_subs = item.get("subtasks", [])
@@ -104,14 +106,25 @@ def delete_task_by_index(task_idx: int) -> bool:
         return True
     return False
 
-# --- Tool 1: Save a task with due date & subtasks ---
-def save_task(task: str, priority: str, due_date: str = "Not specified", subtasks: list[str] = None) -> str:
-    """Saves a task to a local file called tasks.json, with priority level, due date, and sub-steps.
+def update_task_category_by_index(task_idx: int, new_category: str) -> bool:
+    """Updates the category of a task by index."""
+    tasks = get_saved_tasks()
+    if 0 <= task_idx < len(tasks):
+        tasks[task_idx]["category"] = new_category.strip().replace("#", "").title() if new_category else "General"
+        with open("tasks.json", "w", encoding="utf-8") as f:
+            json.dump(tasks, f, indent=2)
+        return True
+    return False
+
+# --- Tool 1: Save a task with due date, category & subtasks ---
+def save_task(task: str, priority: str, due_date: str = "Not specified", category: str = "General", subtasks: list[str] = None) -> str:
+    """Saves a task to a local file called tasks.json, with priority level, due date, category tag, and sub-steps.
 
     Args:
         task: A short description of the task to save.
         priority: How urgent the task is — 'high', 'medium', or 'low'.
         due_date: The resolved calendar deadline (e.g. 'Friday, September 18, 2026' or 'Today'). Use get_current_date to calculate exact dates for relative references.
+        category: Domain/tag for the task (e.g. 'Academics', 'Project', 'Exam', 'Personal', 'Work', or 'General').
         subtasks: Optional list of 2-5 actionable sub-steps or checklist items to complete this task.
     """
     tasks = get_saved_tasks()
@@ -123,10 +136,13 @@ def save_task(task: str, priority: str, due_date: str = "Not specified", subtask
                 "done": False
             })
 
+    cat_clean = category.strip().replace("#", "").title() if category else "General"
+
     tasks.append({
         "task": task,
         "priority": priority.lower(),
         "due_date": due_date,
+        "category": cat_clean,
         "status": "pending",
         "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "subtasks": clean_subs
@@ -136,7 +152,7 @@ def save_task(task: str, priority: str, due_date: str = "Not specified", subtask
         json.dump(tasks, f, indent=2)
 
     subs_msg = f" with {len(clean_subs)} sub-steps" if clean_subs else ""
-    return f"Saved task: '{task}' with priority '{priority}', due date '{due_date}'{subs_msg}."
+    return f"Saved task: '{task}' [#{cat_clean}] with priority '{priority}', due date '{due_date}'{subs_msg}."
 
 
 # --- Tool 2: Read back saved tasks ---
@@ -237,7 +253,29 @@ def add_checklist_item(task_name: str, step_title: str) -> str:
             return f"Added checklist item '{step_title}' to '{t.get('task')}'! 📝"
     return f"Could not find a task matching '{task_name}'."
 
-# --- Tool 6: Get today's real date ---
+# --- Tool 6: Update a task's category tag ---
+def update_task_category(task_name: str, new_category: str) -> str:
+    """Updates the category tag of an existing task.
+
+    Args:
+        task_name: Name or keyword of the task to update.
+        new_category: The new category (e.g. 'Academics', 'Project', 'Exam', 'Personal', 'Work', 'General').
+    """
+    tasks = get_saved_tasks()
+    if not tasks:
+        return "No tasks found."
+
+    query = task_name.lower().strip()
+    cat_clean = new_category.strip().replace("#", "").title() if new_category else "General"
+    for t in tasks:
+        if query in t.get("task", "").lower():
+            t["category"] = cat_clean
+            with open("tasks.json", "w", encoding="utf-8") as f:
+                json.dump(tasks, f, indent=2)
+            return f"Updated category for '{t.get('task')}' to '#{cat_clean}'! 🏷️"
+    return f"Could not find a task matching '{task_name}'."
+
+# --- Tool 7: Get today's real date ---
 def get_current_date() -> str:
     """Returns today's actual date and day of the week, so the assistant can calculate real deadlines."""
     return datetime.now().strftime("%A, %B %d, %Y")
@@ -255,18 +293,19 @@ def get_client(api_key: str = None):
     return _client
 
 def create_agent(api_key: str = None):
-    """Creates and returns an active Gemini chat session with all 6 tools."""
+    """Creates and returns an active Gemini chat session with all 7 tools."""
     client = get_client(api_key)
     chat = client.chats.create(
         model="gemini-3.6-flash",
         config={
-            "tools": [save_task, list_tasks, get_current_date, complete_task, delete_task, add_checklist_item],
+            "tools": [save_task, list_tasks, get_current_date, complete_task, delete_task, add_checklist_item, update_task_category],
             "system_instruction": (
                 "You are Daily Brain, an intelligent productivity and task management assistant. "
                 "When the user mentions tasks, todos, or assignments, organize them into a clear, structured plan with actionable steps. "
                 "- If a relative day is mentioned (e.g. 'today', 'tomorrow', 'Friday', 'next week'), call get_current_date first to accurately determine the real calendar date. "
-                "- When adding/saving a task, break it down into 2-5 actionable subtasks (checklist items) and pass them into save_task alongside task summary, priority ('high', 'medium', or 'low'), and due_date. "
+                "- When adding/saving a task, infer the best category tag ('Academics', 'Project', 'Exam', 'Personal', 'Work', or 'General') or use any tag specified by the user, break down complex tasks into 2-5 actionable subtasks (checklist items), and call save_task. "
                 "- When the user asks to add a specific checklist item or step to an existing task, call add_checklist_item. "
+                "- When the user asks to change or update a task's category, call update_task_category. "
                 "- When the user asks what tasks they have or requests a summary, call list_tasks. "
                 "- When the user mentions completing, finishing, or checking off a task, call complete_task with the task name. "
                 "- When the user asks to delete or remove a task, call delete_task with the task name."

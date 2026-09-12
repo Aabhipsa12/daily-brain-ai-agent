@@ -8,7 +8,8 @@ from main import (
     delete_task_by_index,
     toggle_subtask_status,
     add_subtask_to_task,
-    delete_subtask_by_index
+    delete_subtask_by_index,
+    update_task_category_by_index
 )
 
 # Load environment variables (.env)
@@ -120,6 +121,37 @@ st.markdown("""
         color: #3B82F6;
         border: 1px solid rgba(59, 130, 246, 0.4);
     }
+    /* Category Badges */
+    .badge-cat {
+        background-color: rgba(148, 163, 184, 0.18);
+        color: #94A3B8;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+    .badge-cat-academics {
+        background-color: rgba(168, 85, 247, 0.18);
+        color: #C084FC;
+        border: 1px solid rgba(168, 85, 247, 0.35);
+    }
+    .badge-cat-project {
+        background-color: rgba(6, 182, 212, 0.18);
+        color: #22D3EE;
+        border: 1px solid rgba(6, 182, 212, 0.35);
+    }
+    .badge-cat-exam {
+        background-color: rgba(244, 63, 94, 0.18);
+        color: #FB7185;
+        border: 1px solid rgba(244, 63, 94, 0.35);
+    }
+    .badge-cat-personal {
+        background-color: rgba(234, 179, 8, 0.18);
+        color: #FACC15;
+        border: 1px solid rgba(234, 179, 8, 0.35);
+    }
+    .badge-cat-work {
+        background-color: rgba(59, 130, 246, 0.18);
+        color: #60A5FA;
+        border: 1px solid rgba(59, 130, 246, 0.35);
+    }
     .meta-pill {
         display: inline-flex;
         align-items: center;
@@ -167,22 +199,23 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 🛠️ Available Agent Tools")
     st.markdown("""
-    - `save_task`: Saves task with priority, due date & subtasks
+    - `save_task`: Saves task with priority, due date, category & subtasks
     - `list_tasks`: Retrieves active or completed tasks
     - `get_current_date`: Resolves dynamic dates (e.g. *today*, *Friday*)
     - `complete_task`: Marks tasks as completed
     - `delete_task`: Removes tasks by name/keyword
     - `add_checklist_item`: Adds sub-steps to existing tasks
+    - `update_task_category`: Reassigns category tags (#Exam, #Academics)
     """)
 
     st.markdown("---")
     st.markdown("#### 💡 Quick Examples")
     example_prompts = [
-        "Finish my CN assignment by Friday",
+        "Finish my CN assignment by Friday #Academics",
+        "Prepare for DAA test next week #Exam",
         "Mark DAA assignment as done",
         "What tasks are currently pending?",
-        "Submit the project tomorrow with high priority",
-        "Delete the Google Form task"
+        "Submit project documentation tomorrow #Project"
     ]
     for prompt in example_prompts:
         if st.button(prompt, key=f"quick_{prompt}", use_container_width=True):
@@ -299,18 +332,22 @@ with tab_board:
         st.info("No tasks saved yet. Tell the AI assistant about your tasks to get started!")
     else:
         # Search & Filter Row
-        col_search, col_status, col_prio, col_sort = st.columns([3, 2, 2, 2])
+        col_search, col_status, col_cat, col_prio, col_sort = st.columns([3, 2, 2, 2, 2])
         with col_search:
             search_query = st.text_input("🔍 Search tasks:", placeholder="Type to filter by title...").strip().lower()
         with col_status:
             status_filter = st.selectbox(
-                "Filter by Status:",
+                "Status:",
                 ["All", "Active / Pending", "Completed"],
                 index=0
             )
+        with col_cat:
+            all_cats = sorted(list(set(t.get("category", "General") for t in tasks)))
+            cat_options = ["All"] + all_cats
+            category_filter = st.selectbox("Category:", cat_options, index=0)
         with col_prio:
             priority_filter = st.selectbox(
-                "Filter by Priority:",
+                "Priority:",
                 ["All", "High", "Medium", "Low"],
                 index=0
             )
@@ -334,6 +371,10 @@ with tab_board:
         elif status_filter == "Completed":
             indexed_tasks = [item for item in indexed_tasks if item[1].get("status") == "completed"]
 
+        # Category filter
+        if category_filter != "All":
+            indexed_tasks = [item for item in indexed_tasks if item[1].get("category", "General").lower() == category_filter.lower()]
+
         # Priority filter
         if priority_filter != "All":
             indexed_tasks = [item for item in indexed_tasks if item[1].get("priority", "").lower() == priority_filter.lower()]
@@ -353,11 +394,15 @@ with tab_board:
                 status = item.get("status", "pending").lower()
                 due_date = item.get("due_date", "Not specified")
                 saved_at = item.get("saved_at", "Unknown")
+                category = item.get("category", "General")
                 subtasks = item.get("subtasks", [])
 
                 is_done = (status == "completed")
                 prio_class = f"badge-{prio}" if prio in ["high", "medium", "low"] else "badge-low"
                 status_class = "badge-completed" if is_done else "badge-pending"
+                cat_lower = category.lower()
+                cat_class = f"badge-cat-{cat_lower}" if cat_lower in ["academics", "project", "exam", "personal", "work"] else "badge-cat"
+
                 card_extra = "task-card-completed" if is_done else ""
                 title_extra = "task-title-done" if is_done else ""
 
@@ -372,7 +417,8 @@ with tab_board:
                         <div class="task-card {card_extra}">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
                                 <div class="task-title {title_extra}">{task_text}</div>
-                                <div style="display: flex; gap: 0.35rem;">
+                                <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
+                                    <span class="badge {cat_class}">#{category}</span>
                                     <span class="badge {status_class}">{"DONE" if is_done else "PENDING"}</span>
                                     <span class="badge {prio_class}">{prio.upper()}</span>
                                 </div>
