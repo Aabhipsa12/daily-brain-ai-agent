@@ -5,7 +5,10 @@ from main import (
     create_agent,
     get_saved_tasks,
     toggle_task_status,
-    delete_task_by_index
+    delete_task_by_index,
+    toggle_subtask_status,
+    add_subtask_to_task,
+    delete_subtask_by_index
 )
 
 # Load environment variables (.env)
@@ -164,11 +167,12 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("#### 🛠️ Available Agent Tools")
     st.markdown("""
-    - `save_task`: Saves task with priority & due date
+    - `save_task`: Saves task with priority, due date & subtasks
     - `list_tasks`: Retrieves active or completed tasks
     - `get_current_date`: Resolves dynamic dates (e.g. *today*, *Friday*)
     - `complete_task`: Marks tasks as completed
     - `delete_task`: Removes tasks by name/keyword
+    - `add_checklist_item`: Adds sub-steps to existing tasks
     """)
 
     st.markdown("---")
@@ -349,12 +353,17 @@ with tab_board:
                 status = item.get("status", "pending").lower()
                 due_date = item.get("due_date", "Not specified")
                 saved_at = item.get("saved_at", "Unknown")
+                subtasks = item.get("subtasks", [])
 
                 is_done = (status == "completed")
                 prio_class = f"badge-{prio}" if prio in ["high", "medium", "low"] else "badge-low"
                 status_class = "badge-completed" if is_done else "badge-pending"
                 card_extra = "task-card-completed" if is_done else ""
                 title_extra = "task-title-done" if is_done else ""
+
+                completed_subs = sum(1 for s in subtasks if s.get("done"))
+                total_subs = len(subtasks)
+                subs_meta = f'<span class="meta-pill">📝 {completed_subs}/{total_subs} steps</span>' if total_subs > 0 else ""
 
                 with st.container():
                     col_card, col_action, col_del = st.columns([8, 1.6, 0.8])
@@ -371,9 +380,62 @@ with tab_board:
                             <div class="task-meta-row">
                                 <span class="meta-pill">📅 Due: {due_date}</span>
                                 <span class="meta-pill">🕒 Added: {saved_at}</span>
+                                {subs_meta}
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
+
+                        # Subtasks / Checklist expander
+                        if total_subs > 0:
+                            with st.expander(f"📝 Checklist ({completed_subs}/{total_subs} completed)", expanded=(not is_done and completed_subs < total_subs)):
+                                st.progress(completed_subs / total_subs)
+                                for sub_idx, sub in enumerate(subtasks):
+                                    sc1, sc2 = st.columns([10, 1])
+                                    with sc1:
+                                        is_sub_done = sub.get("done", False)
+                                        chk = st.checkbox(
+                                            sub.get("title", ""),
+                                            value=is_sub_done,
+                                            key=f"chk_{original_idx}_{sub_idx}",
+                                            help="Toggle step status"
+                                        )
+                                        if chk != is_sub_done:
+                                            toggle_subtask_status(original_idx, sub_idx)
+                                            st.rerun()
+                                    with sc2:
+                                        if st.button("✕", key=f"del_sub_{original_idx}_{sub_idx}", help="Remove step"):
+                                            delete_subtask_by_index(original_idx, sub_idx)
+                                            st.rerun()
+
+                                # Quick add step inside existing checklist
+                                c_in, c_btn = st.columns([8, 2])
+                                with c_in:
+                                    new_step_text = st.text_input(
+                                        "Add step",
+                                        placeholder="+ Add next step...",
+                                        key=f"in_step_{original_idx}",
+                                        label_visibility="collapsed"
+                                    )
+                                with c_btn:
+                                    if st.button("+ Add", key=f"btn_step_{original_idx}", use_container_width=True):
+                                        if new_step_text.strip():
+                                            add_subtask_to_task(original_idx, new_step_text.strip())
+                                            st.rerun()
+                        else:
+                            with st.expander("➕ Add checklist steps"):
+                                c_in, c_btn = st.columns([8, 2])
+                                with c_in:
+                                    new_step_text = st.text_input(
+                                        "Add step",
+                                        placeholder="+ Add first step...",
+                                        key=f"in_init_step_{original_idx}",
+                                        label_visibility="collapsed"
+                                    )
+                                with c_btn:
+                                    if st.button("+ Add", key=f"btn_init_step_{original_idx}", use_container_width=True):
+                                        if new_step_text.strip():
+                                            add_subtask_to_task(original_idx, new_step_text.strip())
+                                            st.rerun()
 
                     with col_action:
                         st.write("")
