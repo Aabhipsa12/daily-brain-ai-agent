@@ -1,5 +1,6 @@
 # 🧠 Daily Brain — Autonomous AI Task Management Agent
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-daily--brain--agent.streamlit.app-brightgreen?logo=streamlit&logoColor=white)](https://daily-brain-agent.streamlit.app)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35%2B-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![Gemini](https://img.shields.io/badge/Google%20Gemini-3.6%20Flash-orange?logo=google&logoColor=white)](https://aistudio.google.com/)
