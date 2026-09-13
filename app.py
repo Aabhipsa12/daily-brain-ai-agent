@@ -9,7 +9,8 @@ from main import (
     toggle_subtask_status,
     add_subtask_to_task,
     delete_subtask_by_index,
-    update_task_category_by_index
+    update_task_category_by_index,
+    get_deadline_status
 )
 
 # Load environment variables (.env)
@@ -152,6 +153,29 @@ st.markdown("""
         color: #60A5FA;
         border: 1px solid rgba(59, 130, 246, 0.35);
     }
+    /* Urgency & Deadline Badges */
+    .badge-urgency-overdue {
+        background-color: rgba(220, 38, 38, 0.25);
+        color: #F87171;
+        border: 1px solid rgba(220, 38, 38, 0.5);
+        font-weight: 800;
+    }
+    .badge-urgency-due_today {
+        background-color: rgba(234, 88, 12, 0.25);
+        color: #FB923C;
+        border: 1px solid rgba(234, 88, 12, 0.5);
+        font-weight: 800;
+    }
+    .badge-urgency-due_tomorrow {
+        background-color: rgba(202, 138, 4, 0.22);
+        color: #FACC15;
+        border: 1px solid rgba(202, 138, 4, 0.45);
+    }
+    .badge-urgency-upcoming {
+        background-color: rgba(14, 165, 233, 0.18);
+        color: #38BDF8;
+        border: 1px solid rgba(14, 165, 233, 0.35);
+    }
     .meta-pill {
         display: inline-flex;
         align-items: center;
@@ -206,16 +230,17 @@ with st.sidebar:
     - `delete_task`: Removes tasks by name/keyword
     - `add_checklist_item`: Adds sub-steps to existing tasks
     - `update_task_category`: Reassigns category tags (#Exam, #Academics)
+    - `get_urgent_tasks`: Checks overdue & near deadlines
     """)
 
     st.markdown("---")
     st.markdown("#### 💡 Quick Examples")
     example_prompts = [
+        "What tasks are overdue or due soon?",
         "Finish my CN assignment by Friday #Academics",
         "Prepare for DAA test next week #Exam",
         "Mark DAA assignment as done",
-        "What tasks are currently pending?",
-        "Submit project documentation tomorrow #Project"
+        "What tasks are currently pending?"
     ]
     for prompt in example_prompts:
         if st.button(prompt, key=f"quick_{prompt}", use_container_width=True):
@@ -227,13 +252,16 @@ with st.sidebar:
     total_count = len(all_tasks)
     pending_count = sum(1 for t in all_tasks if t.get("status") != "completed")
     completed_count = sum(1 for t in all_tasks if t.get("status") == "completed")
+    overdue_count = sum(1 for t in all_tasks if get_deadline_status(t)[0] == "overdue" and t.get("status") != "completed")
     high_count = sum(1 for t in all_tasks if t.get("priority") == "high" and t.get("status") != "completed")
 
-    col_m1, col_m2 = st.columns(2)
+    col_m1, col_m2, col_m3 = st.columns(3)
     with col_m1:
         st.metric("Pending", pending_count, delta=f"{high_count} High" if high_count else None)
     with col_m2:
-        st.metric("Completed", completed_count)
+        st.metric("Overdue", overdue_count, delta=f"-{overdue_count}" if overdue_count else "0", delta_color="inverse")
+    with col_m3:
+        st.metric("Done", completed_count)
 
 # --- Header Area ---
 st.markdown("""
@@ -331,14 +359,29 @@ with tab_board:
     if not tasks:
         st.info("No tasks saved yet. Tell the AI assistant about your tasks to get started!")
     else:
+        # Due Reminders & Attention Banner
+        overdue_tasks = [t for t in tasks if get_deadline_status(t)[0] == "overdue" and t.get("status") != "completed"]
+        due_today_tasks = [t for t in tasks if get_deadline_status(t)[0] == "due_today" and t.get("status") != "completed"]
+
+        if overdue_tasks:
+            overdue_preview = ", ".join(f"**{t['task']}**" for t in overdue_tasks[:2])
+            more_txt = f" (+{len(overdue_tasks)-2} more)" if len(overdue_tasks) > 2 else ""
+            st.error(f"🚨 **Attention Required:** You have **{len(overdue_tasks)}** overdue task(s) ({overdue_preview}{more_txt})! Complete or reschedule them.")
+        elif due_today_tasks:
+            today_preview = ", ".join(f"**{t['task']}**" for t in due_today_tasks[:2])
+            more_txt = f" (+{len(due_today_tasks)-2} more)" if len(due_today_tasks) > 2 else ""
+            st.warning(f"⚠️ **Due Today:** You have **{len(due_today_tasks)}** task(s) scheduled for today ({today_preview}{more_txt}). Focus on these first!")
+        else:
+            st.success("✨ **All Caught Up!** You have no overdue deadlines today. Keep up the great work!")
+
         # Search & Filter Row
-        col_search, col_status, col_cat, col_prio, col_sort = st.columns([3, 2, 2, 2, 2])
+        col_search, col_status, col_cat, col_prio, col_sort = st.columns([3, 2.2, 1.8, 1.6, 2.2])
         with col_search:
             search_query = st.text_input("🔍 Search tasks:", placeholder="Type to filter by title...").strip().lower()
         with col_status:
             status_filter = st.selectbox(
                 "Status:",
-                ["All", "Active / Pending", "Completed"],
+                ["All", "Active / Pending", "🚨 Due Today / Overdue", "Completed"],
                 index=0
             )
         with col_cat:
@@ -354,7 +397,7 @@ with tab_board:
         with col_sort:
             sort_order = st.selectbox(
                 "Sort by:",
-                ["Newest First", "Oldest First"],
+                ["🚨 Urgency (Due Soonest)", "Newest First", "Oldest First"],
                 index=0
             )
 
@@ -368,6 +411,8 @@ with tab_board:
         # Status filter
         if status_filter == "Active / Pending":
             indexed_tasks = [item for item in indexed_tasks if item[1].get("status") != "completed"]
+        elif status_filter == "🚨 Due Today / Overdue":
+            indexed_tasks = [item for item in indexed_tasks if get_deadline_status(item[1])[0] in ["overdue", "due_today"] and item[1].get("status") != "completed"]
         elif status_filter == "Completed":
             indexed_tasks = [item for item in indexed_tasks if item[1].get("status") == "completed"]
 
@@ -380,7 +425,9 @@ with tab_board:
             indexed_tasks = [item for item in indexed_tasks if item[1].get("priority", "").lower() == priority_filter.lower()]
 
         # Sort order
-        if sort_order == "Newest First":
+        if sort_order == "🚨 Urgency (Due Soonest)":
+            indexed_tasks.sort(key=lambda item: get_deadline_status(item[1])[2])
+        elif sort_order == "Newest First":
             indexed_tasks = list(reversed(indexed_tasks))
 
         st.caption(f"Showing **{len(indexed_tasks)}** of **{len(tasks)}** total tasks")
@@ -403,6 +450,9 @@ with tab_board:
                 cat_lower = category.lower()
                 cat_class = f"badge-cat-{cat_lower}" if cat_lower in ["academics", "project", "exam", "personal", "work"] else "badge-cat"
 
+                urgency_code, urgency_label, _ = get_deadline_status(item)
+                urgency_pill = f'<span class="badge badge-urgency-{urgency_code}">{urgency_label}</span>' if not is_done and urgency_code in ["overdue", "due_today", "due_tomorrow", "upcoming"] else ""
+
                 card_extra = "task-card-completed" if is_done else ""
                 title_extra = "task-title-done" if is_done else ""
 
@@ -419,6 +469,7 @@ with tab_board:
                                 <div class="task-title {title_extra}">{task_text}</div>
                                 <div style="display: flex; gap: 0.35rem; align-items: center; flex-wrap: wrap;">
                                     <span class="badge {cat_class}">#{category}</span>
+                                    {urgency_pill}
                                     <span class="badge {status_class}">{"DONE" if is_done else "PENDING"}</span>
                                     <span class="badge {prio_class}">{prio.upper()}</span>
                                 </div>

@@ -1,10 +1,83 @@
 import os
 import json
-from datetime import datetime
+import re
+from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 from google import genai
 
 load_dotenv()
+
+# --- Deadline Parsing & Urgency Engine ---
+def parse_deadline(due_date_str: str) -> date | None:
+    """Attempts to parse a due_date string into a datetime.date object."""
+    if not due_date_str or due_date_str.strip().lower() in ["not specified", "none", "", "null"]:
+        return None
+
+    raw = due_date_str.strip()
+    raw_lower = raw.lower()
+    today = datetime.now().date()
+
+    if "today" in raw_lower:
+        return today
+    if "tomorrow" in raw_lower:
+        return today + timedelta(days=1)
+
+    formats = [
+        "%A, %B %d, %Y",
+        "%B %d, %Y",
+        "%b %d, %Y",
+        "%Y-%m-%d",
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%m/%d/%Y"
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except (ValueError, TypeError):
+            pass
+
+    # Regex search for Month Day, Year (e.g. "September 16, 2026")
+    match = re.search(r"([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})", raw)
+    if match:
+        clean_date_str = f"{match.group(1)} {match.group(2)}, {match.group(3)}"
+        for fmt in ["%B %d, %Y", "%b %d, %Y"]:
+            try:
+                return datetime.strptime(clean_date_str, fmt).date()
+            except (ValueError, TypeError):
+                pass
+
+    return None
+
+def get_deadline_status(task: dict) -> tuple[str, str, int]:
+    """Computes urgency status for a task.
+    Returns: (urgency_code, badge_label, days_diff)
+    urgency_code: 'completed', 'overdue', 'due_today', 'due_tomorrow', 'upcoming', 'no_deadline'
+    """
+    status = task.get("status", "pending").lower()
+    if status == "completed":
+        return ("completed", "Completed", 9999)
+
+    target_date = parse_deadline(task.get("due_date", ""))
+    if target_date is None:
+        return ("no_deadline", "No deadline", 9998)
+
+    today = datetime.now().date()
+    diff = (target_date - today).days
+
+    if diff < 0:
+        days_ago = abs(diff)
+        label = f"🚨 Overdue ({days_ago}d ago)" if days_ago > 1 else "🚨 Overdue (yesterday)"
+        return ("overdue", label, diff)
+    elif diff == 0:
+        return ("due_today", "⚠️ Due Today", 0)
+    elif diff == 1:
+        return ("due_tomorrow", "⏰ Due Tomorrow", 1)
+    elif diff <= 7:
+        return ("upcoming", f"⏳ In {diff} days", diff)
+    else:
+        return ("upcoming", f"📅 In {diff} days", diff)
 
 # --- Storage Helpers & Normalization ---
 def get_saved_tasks() -> list:
@@ -275,7 +348,33 @@ def update_task_category(task_name: str, new_category: str) -> str:
             return f"Updated category for '{t.get('task')}' to '#{cat_clean}'! 🏷️"
     return f"Could not find a task matching '{task_name}'."
 
-# --- Tool 7: Get today's real date ---
+# --- Tool 7: Check urgent & overdue deadlines ---
+def get_urgent_tasks() -> str:
+    """Returns all overdue tasks, tasks due today, and tasks due in the next 7 days, so the assistant can summarize urgent deadlines."""
+    tasks = get_saved_tasks()
+    if not tasks:
+        return "No tasks have been saved yet."
+
+    urgent = []
+    for t in tasks:
+        if t.get("status") == "completed":
+            continue
+        code, label, diff = get_deadline_status(t)
+        if code in ["overdue", "due_today", "due_tomorrow", "upcoming"] and diff <= 7:
+            urgent.append({
+                "task": t.get("task"),
+                "priority": t.get("priority"),
+                "category": t.get("category"),
+                "due_date": t.get("due_date"),
+                "urgency": label
+            })
+
+    if not urgent:
+        return "Great news! You have no overdue tasks or tasks due in the next 7 days."
+
+    return json.dumps(urgent, indent=2)
+
+# --- Tool 8: Get today's real date ---
 def get_current_date() -> str:
     """Returns today's actual date and day of the week, so the assistant can calculate real deadlines."""
     return datetime.now().strftime("%A, %B %d, %Y")
@@ -293,12 +392,12 @@ def get_client(api_key: str = None):
     return _client
 
 def create_agent(api_key: str = None):
-    """Creates and returns an active Gemini chat session with all 7 tools."""
+    """Creates and returns an active Gemini chat session with all 8 tools."""
     client = get_client(api_key)
     chat = client.chats.create(
         model="gemini-3.6-flash",
         config={
-            "tools": [save_task, list_tasks, get_current_date, complete_task, delete_task, add_checklist_item, update_task_category],
+            "tools": [save_task, list_tasks, get_current_date, complete_task, delete_task, add_checklist_item, update_task_category, get_urgent_tasks],
             "system_instruction": (
                 "You are Daily Brain, an intelligent productivity and task management assistant. "
                 "When the user mentions tasks, todos, or assignments, organize them into a clear, structured plan with actionable steps. "
@@ -306,7 +405,8 @@ def create_agent(api_key: str = None):
                 "- When adding/saving a task, infer the best category tag ('Academics', 'Project', 'Exam', 'Personal', 'Work', or 'General') or use any tag specified by the user, break down complex tasks into 2-5 actionable subtasks (checklist items), and call save_task. "
                 "- When the user asks to add a specific checklist item or step to an existing task, call add_checklist_item. "
                 "- When the user asks to change or update a task's category, call update_task_category. "
-                "- When the user asks what tasks they have or requests a summary, call list_tasks. "
+                "- When the user asks what tasks are overdue, due today, or upcoming, call get_urgent_tasks. "
+                "- When the user asks what tasks they have or requests a general summary, call list_tasks. "
                 "- When the user mentions completing, finishing, or checking off a task, call complete_task with the task name. "
                 "- When the user asks to delete or remove a task, call delete_task with the task name."
             )
