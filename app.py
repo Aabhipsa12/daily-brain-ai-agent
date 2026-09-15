@@ -279,6 +279,25 @@ with st.sidebar:
     else:
         st.error("🔴 API Key Required")
 
+    # Mobile & Desktop Install Box
+    with st.expander("📲 **Install App on Phone / PC**", expanded=False):
+        st.markdown("""
+        **Install Daily Brain as a standalone App:**
+        
+        **🤖 Android (Chrome):**
+        1. Open in **Chrome on your phone**: `daily-brain-agent.streamlit.app`
+        2. Tap the **Chrome browser menu `⋮`** (at the very top-right of your browser header, next to the URL/tabs).
+        3. Tap **"Install app"** or **"Add to Home screen"**.
+        
+        **🍎 iPhone (Safari):**
+        1. Open in **Safari**: `daily-brain-agent.streamlit.app`
+        2. Tap **Share** (square with up arrow) ➡️ **"Add to Home Screen"**.
+        
+        **💻 PC / Laptop:**
+        - Click the **Install icon** `⊕` in your browser address bar.
+        """)
+        st.image("https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://daily-brain-agent.streamlit.app", caption="Scan with phone to open", width=160)
+
     st.markdown("---")
     st.markdown("#### 🛠️ Available Agent Capabilities")
     st.markdown("""
