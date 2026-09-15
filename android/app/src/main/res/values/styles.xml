@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.DailyBrain" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:statusBarColor">#0E1117</item>
+        <item name="android:navigationBarColor">#0E1117</item>
+    </style>
+</resources>

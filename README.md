@@ -176,18 +176,36 @@ Type `quit` to exit.
 
 ---
 
-## ☁️ Deployment (Streamlit Community Cloud)
+---
 
-This project is configured for one-click free deployment on [Streamlit Community Cloud](https://streamlit.io/cloud):
+## 📱 Mobile Applications (PWA, Android & iOS)
 
-1. Push your repository to GitHub.
-2. Sign in to Streamlit Cloud and click **"New app"**.
-3. Select this repository, branch `main`, and main file path `app.py`.
-4. Under **Advanced Settings > Secrets**, add your API key:
-   ```toml
-   GEMINI_API_KEY = "your_actual_api_key_here"
-   ```
-5. Click **Deploy**!
+Daily Brain is designed to run seamlessly on smartphones and tablets across three deployment modes:
+
+### 1. Progressive Web App (PWA — iPhone & Android)
+The quickest, zero-cost way to install Daily Brain directly on any mobile device:
+- **iPhone (iOS Safari)**:
+  1. Open [daily-brain-agent.streamlit.app](https://daily-brain-agent.streamlit.app) in Safari.
+  2. Tap the **Share** button (box with upward arrow).
+  3. Scroll down and tap **"Add to Home Screen"**.
+  4. Tap **Add** — Daily Brain will now launch from your home screen as a full-screen, standalone app with its custom app icon.
+- **Android (Google Chrome)**:
+  1. Open [daily-brain-agent.streamlit.app](https://daily-brain-agent.streamlit.app) in Chrome.
+  2. Tap the **"Install Daily Brain"** banner (or tap the 3 dots menu ➡️ **"Install app"**).
+  3. Daily Brain is added directly into your Android launcher and app drawer.
+
+### 2. Native Android Application (`android/`)
+A dedicated native Android Kotlin application with full-screen hardware acceleration, HTML5 microphone permission handling, and pull-to-refresh:
+1. Open the `android/` folder in **Android Studio**.
+2. Sync Gradle dependencies.
+3. Select your connected Android phone or Android Virtual Device (AVD).
+4. Click **Run** (`Shift + F10`) or go to **Build > Build Bundle(s) / APK(s) > Build APK(s)** to produce an installable `.apk`.
+
+### 3. Native iOS Application (`ios/`)
+A native SwiftUI `WKWebView` wrapper project configured with microphone permissions (`NSMicrophoneUsageDescription`) for voice task dictation:
+1. Open the `ios/` folder in **Xcode** on macOS.
+2. Select your target device (iPhone or iOS Simulator).
+3. Click **Run** (`Cmd + R`) to compile and launch.
 
 ---
 

@@ -194,7 +194,56 @@ st.markdown("""
         padding: 0.75rem 1rem;
         margin-bottom: 0.75rem;
     }
+    
+    /* Mobile App Responsive Optimization (Smartphones & Tablets) */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 5rem !important;
+            padding-left: 0.6rem !important;
+            padding-right: 0.6rem !important;
+        }
+        .app-title {
+            font-size: 1.6rem !important;
+        }
+        .app-subtitle {
+            font-size: 0.85rem !important;
+        }
+        .task-card {
+            padding: 0.85rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+        .task-title {
+            font-size: 1rem !important;
+        }
+        /* Touch target improvements */
+        button[kind="primary"], button[kind="secondary"], .stButton > button {
+            min-height: 44px !important;
+            font-size: 0.95rem !important;
+        }
+    }
 </style>
+<head>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Daily Brain">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="manifest" href="/app/static/manifest.json">
+    <link rel="apple-touch-icon" href="/app/static/apple-touch-icon.png">
+</head>
+<script>
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/app/static/sw.js').then(function(registration) {
+                console.log('Daily Brain PWA registered: ', registration.scope);
+            }, function(err) {
+                console.log('Daily Brain PWA registration failed: ', err);
+            });
+        });
+    }
+</script>
 """, unsafe_allow_html=True)
 
 # --- API Key Detection (Local .env or Streamlit Secrets) ---
