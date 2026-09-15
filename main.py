@@ -379,6 +379,31 @@ def get_current_date() -> str:
     """Returns today's actual date and day of the week, so the assistant can calculate real deadlines."""
     return datetime.now().strftime("%A, %B %d, %Y")
 
+# --- Audio Transcription (Voice Input Engine) ---
+def transcribe_audio(audio_bytes: bytes, api_key: str = None) -> str:
+    """Transcribes audio bytes (WAV/MP3/M4A) into clean text using Gemini multimodal capabilities."""
+    if not audio_bytes:
+        return ""
+    client = get_client(api_key)
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=[
+                genai.types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav"),
+                (
+                    "Transcribe this voice audio recording verbatim into clean English text. "
+                    "If the user is dictating tasks, todos, deadlines, categories (like #Academics, #Project, #Exam, #Personal, #Work), or checklist items, "
+                    "preserve all technical acronyms (e.g. DSA, DAA, CN, OS, DBMS, AI), subject names, numbers, and dates accurately. "
+                    "Return ONLY the transcribed text, with no explanations, no quotation marks, and no markdown formatting."
+                )
+            ]
+        )
+        if response and response.text:
+            return response.text.strip().strip('"').strip("'")
+        return ""
+    except Exception as e:
+        raise RuntimeError(f"Voice transcription error: {e}")
+
 # --- Agent factory ---
 _client = None
 

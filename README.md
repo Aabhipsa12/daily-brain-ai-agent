@@ -2,31 +2,36 @@
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-daily--brain--agent.streamlit.app-brightgreen?logo=streamlit&logoColor=white)](https://daily-brain-agent.streamlit.app)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.35%2B-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.40%2B-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io/)
 [![Gemini](https://img.shields.io/badge/Google%20Gemini-3.6%20Flash-orange?logo=google&logoColor=white)](https://aistudio.google.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
-**Daily Brain** is an intelligent, context-aware productivity assistant that converts everyday natural language into structured, scheduled, and actionable plans. Powered by Google Gemini's native function/tool calling, it dynamically reasons about deadlines, computes real calendar dates, and manages your personal tasks through an interactive Streamlit web dashboard and command-line interface.
+**Daily Brain** is an intelligent, context-aware productivity assistant that converts everyday natural language (spoken or typed) into structured, scheduled, and actionable plans. Powered by Google Gemini's native function/tool calling and multimodal audio understanding, it dynamically reasons about deadlines, computes real calendar dates, tracks sub-step checklists, manages category tags, and provides visual urgency alerts through an interactive Streamlit web dashboard and command-line interface.
 
 ---
 
 ## 🌟 Key Features
 
-- **Natural Language Task Capture**: Express thoughts naturally (e.g., *"Finish my CN assignment by Friday"*, *"Prepare for DAA exam next Wednesday with high priority"*).
-- **Autonomous Tool/Function Calling**: The agent dynamically selects and coordinates 5 Python tools based on conversational intent:
-  - `get_current_date`: Resolves relative dates (*"today"*, *"tomorrow"*, *"this Friday"*, *"next week"*) against the live calendar.
-  - `save_task`: Extracts task descriptions, infers priority, and records exact deadlines.
-  - `list_tasks`: Retrieves active and completed tasks for summarization and status reviews.
-  - `complete_task`: Autonomously identifies and marks tasks as completed through natural language.
-  - `delete_task`: Removes obsolete tasks based on intent.
-- **Intelligent Action Plans**: In addition to saving tasks, Daily Brain synthesizes realistic, step-by-step execution strategies (e.g., Pomodoro time blocks, requirement checks, submission verification).
+- **🎙️ Voice Input (Speech-to-Text)**: Speak tasks, deadlines, and notes aloud directly from any desktop or mobile browser. Gemini 3.6 Flash multimodal AI transcribes voice input with high precision and immediately executes task scheduling.
+- **📝 Sub-tasks & Actionable Checklists**: Tasks are automatically broken down into 2–5 structured sub-steps with interactive checkboxes and real-time progress bars.
+- **🏷️ Category & Domain Tags**: Automatically categorizes items into `#Academics`, `#Project`, `#Exam`, `#Personal`, and `#Work` with custom-styled color pills.
+- **🚨 Deadlines & Urgency Engine**: Dynamic deadline reasoning with visual urgency badges (`🚨 Overdue`, `⚠️ Due Today`, `⏰ Due Tomorrow`, `⏳ Upcoming`), an automated **Attention Required** banner, and urgency-based sorting.
+- **Autonomous Tool Calling (8 Native Python Tools)**:
+  - `get_current_date`: Resolves relative dates against the live calendar.
+  - `save_task`: Saves tasks with priority, due date, category, and subtasks.
+  - `list_tasks`: Retrieves active or completed tasks for summarization.
+  - `complete_task`: Autonomously identifies and marks tasks as completed.
+  - `delete_task`: Removes obsolete tasks based on user intent.
+  - `add_checklist_item`: Adds actionable steps to existing checklists.
+  - `update_task_category`: Reassigns domain tags.
+  - `get_urgent_tasks`: Surfaces overdue and upcoming deadlines.
 - **Interactive Web Dashboard**:
-  - **Live AI Assistant**: Multi-turn conversational chat with session memory and quick-action prompt buttons.
-  - **Task Board**: Real-time cards displaying priority badges (High 🔴, Medium 🟡, Low 🟢), status pills (Pending/Done), and calendar deadlines.
-  - **Search & Filter**: Filter by status (*Active / Pending*, *Completed*), filter by priority, or search by keyword.
-  - **One-Click Actions**: Toggle completion or delete tasks directly with UI controls.
+  - **Live AI Assistant**: Multi-turn conversational chat with session memory, quick prompts, and voice dictation.
+  - **Task Board**: Real-time cards displaying priority badges, category pills, checklist progress, and urgency statuses.
+  - **Search & Multi-Faceted Filters**: Filter by Status, Category, Priority, or search by keyword.
+  - **One-Click Actions**: Toggle completion, add steps, or delete tasks directly from UI cards.
 - **Dual Interface Architecture**: Seamlessly switch between the **Streamlit Web UI** (`app.py`) and a lightweight **Terminal CLI** (`main.py`).
-- **Free & Lightweight**: Designed to run entirely on free-tier services (Google AI Studio Gemini API + Streamlit Community Cloud) with zero paid database dependencies.
+- **100% Free & Lightweight**: Operates entirely on free-tier services (Google AI Studio Gemini API + Streamlit Community Cloud) with zero paid database dependencies.
 
 ---
 
@@ -35,29 +40,34 @@
 ```
                        ┌─────────────────────────┐
                        │   User Natural Input    │
+                       │     (Text / Voice)      │
                        └────────────┬────────────┘
                                     │
                ┌────────────────────┴────────────────────┐
                ▼                                         ▼
      ┌──────────────────┐                      ┌──────────────────┐
      │  Streamlit App   │                      │   Terminal CLI   │
-     │     (app.py)     │                      │    (main.py)     │
+     │  (Voice + UI)    │                      │    (main.py)     │
      └─────────┬────────┘                      └─────────┬────────┘
                │                                         │
                └────────────────────┬────────────────────┘
                                     ▼
                      ┌─────────────────────────────┐
                      │    Gemini 3.6 Flash Agent   │
-                     │  (Autonomous Tool Selector) │
+                     │  (Multimodal Audio + Tools) │
                      └──────────────┬──────────────┘
                                     │
        ┌────────────────────────────┼────────────────────────────┐
        ▼                            ▼                            ▼
 ┌───────────────┐          ┌─────────────────┐          ┌─────────────────┐
-│get_current_date│          │    save_task    │          │  complete_task  │
-│  (Date Math)  │          │(Priority & Due) │          │  & delete_task  │
+│get_current_date│         │    save_task    │          │  complete_task  │
+│(Date Math)    │          │(Cat/Due/Subtasks│          │  & delete_task  │
 └───────┬───────┘          └────────┬────────┘          └────────┬────────┘
         │                           │                            │
+        │                  ┌────────┴────────┐                   │
+        │                  │add_checklist_item│                   │
+        │                  │get_urgent_tasks │                   │
+        │                  └────────┬────────┘                   │
         └───────────────────────────┼────────────────────────────┘
                                     ▼
                          ┌──────────────────────┐
@@ -72,8 +82,8 @@
 
 ```
 Daily-brain/
-├── app.py              # Streamlit web application & interactive task board
-├── main.py             # Agent engine, tool definitions & CLI runner
+├── app.py              # Streamlit web application, voice input & interactive task board
+├── main.py             # Agent engine, 8 tool definitions, audio transcription & CLI
 ├── tasks.json          # Persistent JSON storage for task data
 ├── requirements.txt    # Minimal, pinned Python dependencies
 ├── .env.example        # Environment variable template
@@ -153,14 +163,15 @@ Type `quit` to exit.
 
 ---
 
-## 💬 Example Interactions
+## 💬 Example Voice & Text Interactions
 
-| User Prompt | Agent Action & Tool Called | Resulting State |
+| User Input (Spoken or Typed) | Agent Action & Tool Called | Resulting State |
 | :--- | :--- | :--- |
-| *"Finish my CN assignment by Friday"* | `get_current_date` ➡️ `save_task(..., priority="high", due_date="Friday, Sep 18, 2026")` | Task saved with calculated calendar date & high priority. |
-| *"Prepare for DAA exam next Wednesday"* | `get_current_date` ➡️ `save_task(..., priority="high", due_date="Wednesday, Sep 23, 2026")` | Saved with exam date breakdown. |
+| *"Finish my CN assignment by Friday #Academics"* | `get_current_date` ➡️ `save_task(..., category="Academics", priority="high", due_date="Friday, Sep 18, 2026", subtasks=[...])` | Task saved with #Academics tag, calculated calendar date & checklist steps. |
+| *"Prepare for DAA exam next Wednesday #Exam"* | `get_current_date` ➡️ `save_task(..., category="Exam", priority="high", due_date="Wednesday, Sep 23, 2026")` | Saved under #Exam with study milestones. |
+| *"What tasks are overdue or due soon?"* | `get_urgent_tasks()` | Highlights urgent deadlines and displays overdue items. |
+| *"Add subtask test client to CN assignment"* | `add_checklist_item("CN assignment", "test client")` | Checklist dynamically updated with new sub-step. |
 | *"Mark DAA assignment as done"* | `complete_task("DAA assignment")` | Status toggled to `completed` in `tasks.json`. |
-| *"What tasks are currently pending?"* | `list_tasks(filter_status="pending")` | Generates a clean bulleted summary of active deadlines. |
 | *"Delete the Google Form task"* | `delete_task("Google Form")` | Task permanently removed from storage. |
 
 ---
@@ -182,10 +193,11 @@ This project is configured for one-click free deployment on [Streamlit Community
 
 ## 🛠️ Tech Stack & Skills Demonstrated
 
-- **Core AI**: Google GenAI SDK (`google-genai`), Gemini 3.6 Flash
-- **Agent Architecture**: Autonomous Function/Tool Calling, Multi-turn Chat Session State
-- **Frontend**: Streamlit, Custom Responsive CSS (Dark/Light Mode)
-- **Backend & Logic**: Python 3.10+, JSON Persistence, Deterministic Date Reasoning
+- **Core AI & Multimodal**: Google GenAI SDK (`google-genai`), Gemini 3.6 Flash (Text & Audio Understanding)
+- **Agent Architecture**: Autonomous Function/Tool Calling (8 tools), Multi-turn Chat Session State
+- **Speech Processing**: Native In-Browser Audio Capture (16kHz WAV), Multimodal STT Transcription
+- **Frontend**: Streamlit, Custom Responsive CSS (Dark/Light Mode), Interactive Checklists & Badges
+- **Backend & Logic**: Python 3.10+, JSON Persistence, Urgency Engine & Deterministic Date Math
 - **DevOps & Security**: Environment isolation (`python-dotenv`), Git hygiene, Secret management
 
 ---

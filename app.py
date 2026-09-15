@@ -1,4 +1,5 @@
 import os
+import hashlib
 import streamlit as st
 from dotenv import load_dotenv
 from main import (
@@ -10,7 +11,8 @@ from main import (
     add_subtask_to_task,
     delete_subtask_by_index,
     update_task_category_by_index,
-    get_deadline_status
+    get_deadline_status,
+    transcribe_audio
 )
 
 # Load environment variables (.env)
@@ -184,6 +186,14 @@ st.markdown("""
         padding: 0.15rem 0.5rem;
         border-radius: 6px;
     }
+    /* Voice Input box */
+    .voice-banner {
+        background-color: rgba(99, 102, 241, 0.08);
+        border: 1px solid rgba(99, 102, 241, 0.25);
+        border-radius: 10px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.75rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -221,7 +231,7 @@ with st.sidebar:
         st.error("🔴 API Key Required")
 
     st.markdown("---")
-    st.markdown("#### 🛠️ Available Agent Tools")
+    st.markdown("#### 🛠️ Available Agent Capabilities")
     st.markdown("""
     - `save_task`: Saves task with priority, due date, category & subtasks
     - `list_tasks`: Retrieves active or completed tasks
@@ -231,6 +241,7 @@ with st.sidebar:
     - `add_checklist_item`: Adds sub-steps to existing tasks
     - `update_task_category`: Reassigns category tags (#Exam, #Academics)
     - `get_urgent_tasks`: Checks overdue & near deadlines
+    - `🎙️ Voice Input`: Native speech-to-text with Gemini transcription
     """)
 
     st.markdown("---")
@@ -275,14 +286,54 @@ st.markdown("""
 tab_chat, tab_board = st.tabs(["💬 AI Assistant", "📋 Saved Tasks Board"])
 
 with tab_chat:
-    # Clear conversation controls
+    # Clear conversation controls & Voice quick-bar
     col_c1, col_c2 = st.columns([5, 1])
+    with col_c1:
+        st.caption("💬 Chat with Daily Brain or record voice tasks below:")
     with col_c2:
-        if st.button("🧹 Clear Chat", use_container_width=True, help="Clear conversation history without deleting saved tasks"):
+        if st.button("🧹 Clear", use_container_width=True, help="Clear conversation history without deleting saved tasks"):
             st.session_state.messages = []
+            st.session_state.pop("last_voice_text", None)
             if api_key:
                 st.session_state.chat_session = create_agent(api_key=api_key)
             st.rerun()
+
+    # --- Feature 4: Voice Input (Speech-to-Text) ---
+    with st.expander("🎙️ **Voice Task Input (Speak your tasks & deadlines)**", expanded=False):
+        st.markdown(
+            "Tap the microphone, speak naturally, and press stop. "
+            "Gemini will transcribe your voice and automatically organize, schedule, and categorize your task!\n\n"
+            "*Example: \"Finish Computer Networks lab by Friday #Academics with subtasks setup socket, write server, test client\"*"
+        )
+        voice_audio = st.audio_input("Record voice task", key="voice_task_recorder", label_visibility="collapsed")
+
+        if voice_audio is not None:
+            audio_bytes = voice_audio.getvalue()
+            if audio_bytes:
+                audio_hash = hashlib.md5(audio_bytes).hexdigest()
+                if st.session_state.get("last_processed_audio_hash") != audio_hash:
+                    if not api_key:
+                        st.error("Please provide a Gemini API Key in the sidebar to transcribe voice input.")
+                    else:
+                        st.session_state["last_processed_audio_hash"] = audio_hash
+                        with st.spinner("🎧 Transcribing your voice with Gemini..."):
+                            try:
+                                transcribed_text = transcribe_audio(audio_bytes, api_key=api_key)
+                                if transcribed_text:
+                                    st.session_state["pending_prompt"] = transcribed_text
+                                    st.session_state["last_voice_text"] = transcribed_text
+                                    st.rerun()
+                                else:
+                                    st.warning("⚠️ No intelligible speech detected. Please speak closer to your microphone.")
+                            except Exception as ve:
+                                st.error(f"⚠️ Voice transcription error: {ve}")
+        else:
+            # Clear stored hash when recording is removed/reset
+            if "last_processed_audio_hash" in st.session_state:
+                del st.session_state["last_processed_audio_hash"]
+
+        if st.session_state.get("last_voice_text"):
+            st.info(f"🎙️ **Last Transcribed Input:** *\"{st.session_state['last_voice_text']}\"*")
 
     # Render chat history
     for msg in st.session_state.messages:
@@ -294,21 +345,21 @@ with tab_chat:
         with st.chat_message("assistant"):
             st.markdown(
                 "👋 **Hi! I'm your Daily Brain assistant.**\n\n"
-                "Tell me what you need to manage in everyday language:\n"
-                "- *\"Finish the CN assignment by Friday\"* ➡️ Plans & schedules\n"
-                "- *\"Mark DAA assignment as done\"* ➡️ Checks off the task\n"
-                "- *\"What tasks are still pending?\"* ➡️ Summarizes active priorities\n"
-                "- *\"Delete the report task\"* ➡️ Removes it from your board\n\n"
+                "Tell me what you need to manage via typing or 🎙️ **Voice Input** above:\n"
+                "- *\"Finish the CN assignment by Friday #Academics\"* ➡️ Plans, categorizes & schedules\n"
+                "- *\"Add subtask review slides to CN assignment\"* ➡️ Adds checklist step\n"
+                "- *\"What tasks are overdue or due soon?\"* ➡️ Highlights urgent deadlines\n"
+                "- *\"Mark DAA assignment as done\"* ➡️ Checks off the task\n\n"
                 "I'll automatically calculate real calendar dates, assign appropriate priorities, and keep your task board in sync!"
             )
 
-    # Handle pending prompt from sidebar quick buttons
+    # Handle pending prompt from sidebar quick buttons or voice transcription
     current_prompt = None
     if "pending_prompt" in st.session_state and st.session_state["pending_prompt"]:
         current_prompt = st.session_state.pop("pending_prompt")
 
     # Chat input box
-    chat_input = st.chat_input("What's on your mind? (e.g. Finish DSA assignment by Friday)")
+    chat_input = st.chat_input("Type or use 🎙️ Voice Input above (e.g. Finish DSA assignment by Friday)")
     active_prompt = current_prompt or chat_input
 
     if active_prompt:
