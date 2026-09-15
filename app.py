@@ -223,28 +223,54 @@ st.markdown("""
         }
     }
 </style>
-<head>
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Daily Brain">
-    <meta name="theme-color" content="#4F46E5">
-    <link rel="manifest" href="/app/static/manifest.json">
-    <link rel="apple-touch-icon" href="/app/static/apple-touch-icon.png">
-</head>
+""", unsafe_allow_html=True)
+
+# Inject PWA tags into top-level document window/head
+st.components.v1.html("""
 <script>
-    // PWA Service Worker Registration
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/app/static/sw.js').then(function(registration) {
-                console.log('Daily Brain PWA registered: ', registration.scope);
-            }, function(err) {
-                console.log('Daily Brain PWA registration failed: ', err);
-            });
+    const parentDoc = window.parent.document;
+    if (parentDoc) {
+        // 1. Manifest
+        if (!parentDoc.querySelector('link[rel="manifest"]')) {
+            const manifestLink = parentDoc.createElement('link');
+            manifestLink.rel = 'manifest';
+            manifestLink.href = '/app/static/manifest.json';
+            parentDoc.head.appendChild(manifestLink);
+        }
+        // 2. Apple touch icon
+        if (!parentDoc.querySelector('link[rel="apple-touch-icon"]')) {
+            const appleIcon = parentDoc.createElement('link');
+            appleIcon.rel = 'apple-touch-icon';
+            appleIcon.href = '/app/static/apple-touch-icon.png';
+            parentDoc.head.appendChild(appleIcon);
+        }
+        // 3. Mobile meta tags
+        const metaTags = [
+            { name: 'mobile-web-app-capable', content: 'yes' },
+            { name: 'apple-mobile-web-app-capable', content: 'yes' },
+            { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
+            { name: 'apple-mobile-web-app-title', content: 'Daily Brain' },
+            { name: 'theme-color', content: '#4F46E5' }
+        ];
+        metaTags.forEach(tag => {
+            if (!parentDoc.querySelector(`meta[name="${tag.name}"]`)) {
+                const m = parentDoc.createElement('meta');
+                m.name = tag.name;
+                m.content = tag.content;
+                parentDoc.head.appendChild(m);
+            }
         });
+        // 4. Service worker registration
+        if ('serviceWorker' in window.parent.navigator) {
+            window.parent.navigator.serviceWorker.register('/app/static/sw.js').then(function(reg) {
+                console.log('Daily Brain PWA registered successfully:', reg.scope);
+            }).catch(function(err) {
+                console.log('Daily Brain PWA registration error:', err);
+            });
+        }
     }
 </script>
-""", unsafe_allow_html=True)
+""", height=0, width=0)
 
 # --- API Key Detection (Local .env or Streamlit Secrets) ---
 api_key = os.getenv("GEMINI_API_KEY")
