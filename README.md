@@ -151,6 +151,16 @@ streamlit run app.py
 
 Open your browser at `http://localhost:8501`.
 
+### Native Desktop Application (Windows / macOS / Linux)
+
+Launch Daily Brain in a dedicated standalone desktop window:
+
+```bash
+python desktop_app.py
+```
+
+Or on Windows, simply double-click **`DailyBrain.bat`**.
+
 ### Terminal Interface (CLI)
 
 Run the agent in your terminal:
