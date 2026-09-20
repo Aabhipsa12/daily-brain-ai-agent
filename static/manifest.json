@@ -1,6 +1,6 @@
-{
+﻿{
   "id": "/",
-  "name": "Daily Brain \u2014 AI Task Agent",
+  "name": "Daily Brain — AI Task Agent",
   "short_name": "Daily Brain",
   "description": "Intelligent AI-powered task management, scheduling, checklists, and voice assistant.",
   "start_url": "/",
@@ -37,6 +37,20 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Saved Tasks",
+      "short_name": "Tasks",
+      "description": "Open your active tasks and checklists",
+      "url": "/?tab=board",
+      "icons": [
+        {
+          "src": "/app/static/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
