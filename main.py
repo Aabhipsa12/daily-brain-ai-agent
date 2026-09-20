@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import re
 from datetime import datetime, date, timedelta
@@ -80,11 +81,31 @@ def get_deadline_status(task: dict) -> tuple[str, str, int]:
         return ("upcoming", f"📅 In {diff} days", diff)
 
 # --- Storage Helpers & Normalization ---
+def get_storage_path() -> str:
+    """Returns the persistent path for tasks.json, prioritizing user AppData in production."""
+    if os.getenv("DAILY_BRAIN_DATA_PATH"):
+        return os.getenv("DAILY_BRAIN_DATA_PATH")
+    
+    if sys.platform == "win32" and "APPDATA" in os.environ:
+        appdata_dir = os.path.join(os.environ["APPDATA"], "DailyBrain")
+        os.makedirs(appdata_dir, exist_ok=True)
+        target_path = os.path.join(appdata_dir, "tasks.json")
+        if not os.path.exists(target_path) and os.path.exists("tasks.json"):
+            try:
+                import shutil
+                shutil.copy("tasks.json", target_path)
+            except Exception:
+                pass
+        return target_path
+    
+    return "tasks.json"
+
 def get_saved_tasks() -> list:
     """Helper to return normalized list of saved task dictionaries for display and manipulation."""
-    if not os.path.exists("tasks.json"):
+    storage_file = get_storage_path()
+    if not os.path.exists(storage_file):
         return []
-    with open("tasks.json", "r", encoding="utf-8") as f:
+    with open(storage_file, "r", encoding="utf-8") as f:
         try:
             tasks = json.load(f)
         except json.JSONDecodeError:
@@ -127,7 +148,7 @@ def toggle_task_status(task_idx: int) -> bool:
     if 0 <= task_idx < len(tasks):
         current = tasks[task_idx].get("status", "pending")
         tasks[task_idx]["status"] = "completed" if current == "pending" else "pending"
-        with open("tasks.json", "w", encoding="utf-8") as f:
+        with open(get_storage_path(), "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2)
         return True
     return False
@@ -139,7 +160,7 @@ def toggle_subtask_status(task_idx: int, subtask_idx: int) -> bool:
         subtasks = tasks[task_idx].get("subtasks", [])
         if 0 <= subtask_idx < len(subtasks):
             subtasks[subtask_idx]["done"] = not subtasks[subtask_idx]["done"]
-            with open("tasks.json", "w", encoding="utf-8") as f:
+            with open(get_storage_path(), "w", encoding="utf-8") as f:
                 json.dump(tasks, f, indent=2)
             return True
     return False
@@ -152,7 +173,7 @@ def add_subtask_to_task(task_idx: int, subtask_title: str) -> bool:
             "title": subtask_title.strip(),
             "done": False
         })
-        with open("tasks.json", "w", encoding="utf-8") as f:
+        with open(get_storage_path(), "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2)
         return True
     return False
@@ -164,7 +185,7 @@ def delete_subtask_by_index(task_idx: int, subtask_idx: int) -> bool:
         subtasks = tasks[task_idx].get("subtasks", [])
         if 0 <= subtask_idx < len(subtasks):
             subtasks.pop(subtask_idx)
-            with open("tasks.json", "w", encoding="utf-8") as f:
+            with open(get_storage_path(), "w", encoding="utf-8") as f:
                 json.dump(tasks, f, indent=2)
             return True
     return False
@@ -174,7 +195,7 @@ def delete_task_by_index(task_idx: int) -> bool:
     tasks = get_saved_tasks()
     if 0 <= task_idx < len(tasks):
         tasks.pop(task_idx)
-        with open("tasks.json", "w", encoding="utf-8") as f:
+        with open(get_storage_path(), "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2)
         return True
     return False
@@ -184,7 +205,7 @@ def update_task_category_by_index(task_idx: int, new_category: str) -> bool:
     tasks = get_saved_tasks()
     if 0 <= task_idx < len(tasks):
         tasks[task_idx]["category"] = new_category.strip().replace("#", "").title() if new_category else "General"
-        with open("tasks.json", "w", encoding="utf-8") as f:
+        with open(get_storage_path(), "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2)
         return True
     return False
@@ -221,7 +242,7 @@ def save_task(task: str, priority: str, due_date: str = "Not specified", categor
         "subtasks": clean_subs
     })
 
-    with open("tasks.json", "w", encoding="utf-8") as f:
+    with open(get_storage_path(), "w", encoding="utf-8") as f:
         json.dump(tasks, f, indent=2)
 
     subs_msg = f" with {len(clean_subs)} sub-steps" if clean_subs else ""
@@ -272,7 +293,7 @@ def complete_task(task_name: str) -> str:
 
     if matched_idx is not None:
         tasks[matched_idx]["status"] = "completed"
-        with open("tasks.json", "w", encoding="utf-8") as f:
+        with open(get_storage_path(), "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2)
         return f"Marked task '{tasks[matched_idx]['task']}' as completed! 🎉"
     return f"Could not find an active task matching '{task_name}' in your list."
@@ -297,7 +318,7 @@ def delete_task(task_name: str) -> str:
 
     if matched_idx is not None:
         removed = tasks.pop(matched_idx)
-        with open("tasks.json", "w", encoding="utf-8") as f:
+        with open(get_storage_path(), "w", encoding="utf-8") as f:
             json.dump(tasks, f, indent=2)
         return f"Deleted task: '{removed.get('task')}' from your list."
     return f"Could not find a task matching '{task_name}' to delete."
@@ -321,7 +342,7 @@ def add_checklist_item(task_name: str, step_title: str) -> str:
                 "title": step_title.strip(),
                 "done": False
             })
-            with open("tasks.json", "w", encoding="utf-8") as f:
+            with open(get_storage_path(), "w", encoding="utf-8") as f:
                 json.dump(tasks, f, indent=2)
             return f"Added checklist item '{step_title}' to '{t.get('task')}'! 📝"
     return f"Could not find a task matching '{task_name}'."
@@ -343,7 +364,7 @@ def update_task_category(task_name: str, new_category: str) -> str:
     for t in tasks:
         if query in t.get("task", "").lower():
             t["category"] = cat_clean
-            with open("tasks.json", "w", encoding="utf-8") as f:
+            with open(get_storage_path(), "w", encoding="utf-8") as f:
                 json.dump(tasks, f, indent=2)
             return f"Updated category for '{t.get('task')}' to '#{cat_clean}'! 🏷️"
     return f"Could not find a task matching '{task_name}'."
