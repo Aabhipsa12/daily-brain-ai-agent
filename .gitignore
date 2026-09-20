@@ -1,27 +1,33 @@
-# Secrets & Credentials (NEVER COMMIT)
-.env
-.env.*
-!.env.example
-.streamlit/secrets.toml
-
-# Python bytecode & cache
+﻿# Python & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
+*.env
 
-# Virtual Environments
-venv/
-.venv/
-env/
-ENV/
+# Build Artifacts
+build/
+dist/
+*.spec
 
-# IDE / Editor configs
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS generated files
-.DS_Store
+# OS Specific
 Thumbs.db
+.DS_Store
+
+# Android & Gradle
+.gradle/
+android/.gradle/
+android/app/build/
+android/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# iOS & Xcode
+ios/DailyBrain.xcodeproj/xcuserdata/
+ios/DailyBrain.xcodeproj/project.xcworkspace/xcuserdata/
+ios/build/
+DerivedData/
+
+# App Data Isolation local files
+.gemini/
