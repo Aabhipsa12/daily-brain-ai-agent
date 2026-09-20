@@ -1,0 +1,49 @@
+﻿name: Daily Brain Release Automation
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Build & Publish Release
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller pywebview
+
+      - name: Build Desktop Executable
+        run: |
+          python build_desktop.py
+
+      - name: Compress Desktop Release
+        run: |
+          Compress-Archive -Path dist\DailyBrain\* -DestinationPath dist\DailyBrain-Windows-x64.zip -Force
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Daily Brain Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: |
+            dist/DailyBrain-Windows-x64.zip
+            dist/BUILD_SUMMARY.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
